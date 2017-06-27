@@ -1,0 +1,35 @@
+<p>PiTabDaemon is a background process for a Raspberry Pi powered tablet (described here [link coming soon]). It performs the following functions:</p>
+<ul>
+<li>checks for a shutdown signal from the power switch and initiates a proper shutdown.</li>
+<li>monitors the three buttons and performs the corresponding actions:</li>
+<ul>
+<li>bring keyboard (short press) or dashboard (long press) to front</li>
+<li>increase brightness by 1/8 (short press) or to maximum (long press)</li>
+<li>toggle foreground application between normal and maximized (short press) or full screen (long press)</li>
+</ul>
+<li>monitors commands from the dashboard (every 5 seconds):</li>
+<ul>
+<li>enable/disable screen dimming on idle when on battery power</li>
+<li>enable/disable USB and Ethernet ports</li>
+<li>enable/disable Wi-Fi and Bluetooth</li>
+</ul>
+<li>power monitoring:</li>
+<ul>
+<li>status of PowerBoost 1000C charging and charge-completed indicators</li>
+<li>battery voltage</li>
+<li>estimate of energy remaining</li>
+<li>information is written to a tiny RAM disk for display by dashboard</li>
+</ul>
+<li>monitors X11 idle time (at varying intervals depending on need):</li>
+<ul>
+<li>dims display to half of selected brightness after 2 minutes of inactivity</li>
+<li>turns off backlight completely after 5 minutes</li>
+</ul>
+<li>monitors PowerBoost 1000C LBO and performs an immediate shutdown if triggered.</li>
+</ul>
+<p>The daemon makes use of the following open source libraries and utilities:</p>
+<ul>
+<li><a href="http://www.airspayce.com/mikem/bcm2835/" target="_blank">bcm2835</a> &#8211; low level GPIO library used to monitor buttons, voltage, etc.</li>
+<li>libxss and xscreensaver &#8211; allows the daemon to monitor user idle time</li>
+<li>wmctrl &#8211; command line utility used by the daemon to resize windows</li>
+</ul>
