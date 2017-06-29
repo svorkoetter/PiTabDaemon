@@ -34,3 +34,5 @@ The daemon makes use of the following open source libraries and utilities:
 * bcm2835 - low level GPIO library used to monitor buttons, voltage, etc.
 * libxss and xscreensaver - allows the daemon to monitor user idle time.
 * wmctrl - command line utility used by the daemon to resize windows.
+
+PiTabDaemon is intended to be used in conjunction with PiTabDashboard (https://github.com/svorkoetter/PiTabDashboard).
