@@ -63,4 +63,3 @@ clean:
 install: $(TARGET)
 	cp $(TARGET) /usr/local/sbin
 	mkdir -p /usr/local/share/pitabd
-	cp ../Sounds/chimes.wav /usr/local/share/pitabd/shutdown.wav
