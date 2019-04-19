@@ -44,12 +44,12 @@
 #define DAT_FILE	"/ram/pitabd.dat"
 
 /* Disk file where daemon's process ID is recorded so it can be killed. */
-#define PID_FILE	"/var/run/pitabd"
+#define PID_FILE	"/var/run/pitabd.pid"
 
 /* RAM disk file used by the dashboard to send settings to the daemon. On
-   shutdown it is saved to the real disk so the settings persist. */
+   shutdown it is saved to the real disk (SD card) so the settings persist. */
 #define CMD_FILE	"/ram/pitabd.cmd"
-#define CMD_SAVE_FILE	"/home/svorkoetter/.config/pitabd.cmd"
+#define CMD_SAVE_FILE	"/var/tmp/pitabd.cmd"
 
 /* Time in ms that LBO must persist before a forced shutdown. */
 #define LBO_TO_SHUTDOWN	60000
@@ -76,7 +76,7 @@ static void usage( void )
 int main( int argc, char **argv )
 {
     /* Process command line options. */
-    bool optKillOnly = false, optDaemonize = true, optLogBattery = false;
+    bool optLogBattery = false, optKillOnly = false, optDaemonize = true;
     int c;
     while( (c = getopt(argc,argv,OPTIONS)) != -1 ) {
 	switch( c ) {
@@ -178,8 +178,8 @@ int main( int argc, char **argv )
     /* Cycle number after which a button press is considered a long press. */
     int button1LongPress = 0, button2LongPress = 0, button3LongPress = 0;
 
-    /* Current state of USB/Ethernet, Wi-Fi/Bluetooth, and idle dimming. */
-    bool usbOn = true, radiosOn = true, allowDim = true;
+    /* Current state of USB/Ethernet/Bluetooth, Wi-Fi, and idle dimming. */
+    bool usbOn = true, wifiOn = true, allowDim = true;
     
     /* Loop forever, keeping track of how many cycles have taken place. */
     for( int cycle = 0;; ++cycle ) {
@@ -254,8 +254,8 @@ int main( int argc, char **argv )
 	if( cycle % 5000 == 0 && (fp = fopen(CMD_FILE,"r")) != NULL ) {
 
 	    /* Read the RAM disk command file that the dashboard writes to. */
-	    int wantDim = 1, wantUSB = 1, wantRad = 1;
-	    int nScanned = fscanf(fp,"%d %d %d",&wantDim,&wantUSB,&wantRad);
+	    int wantDim = 1, wantUSB = 1, wantWifi = 1;
+	    int nScanned = fscanf(fp,"%d %d %d",&wantDim,&wantUSB,&wantWifi);
 	    fclose(fp);
 
 	    /* Act on the commands only if the read was successful. */
@@ -264,43 +264,51 @@ int main( int argc, char **argv )
 		/* Remember whether we want to allow dimming or not. */
 		allowDim = wantDim;
 		
-		/* Turn USB (and Ethernet) on or off. */
+		/* Turn USB, including wired Ethernet and Bluetooth, on or off.
+		   Bluetooth is included only because we replaced the flakey
+		   built-in one with a hard-wired USB dongle. */
 		if( usbOn && !wantUSB ) {
-		    /* Turn off USB and Ethernet */
+		    /* Turn off USB, wired Ethernet, and Bluetooth. */
 		    if( (fp = fopen("/sys/devices/platform/soc/3f980000.usb/buspower","w")) != NULL ) {
 			fprintf(fp,"0\n");
 			fclose(fp);
-			/* Workaround for bug that lxpanel goes to 100% CPU.
-			   Possibly because the USB sound card goes away. */
-			//system("/usr/bin/lxpanelctl restart");
-			WriteToLog("disabled USB");
+			/* Workaround for bug that lxpanel goes to 100% CPU,
+			   because the USB sound card goes away. Doesn't happen
+			   if the default audio is the built-in audio. */
+			system("/usr/bin/lxpanelctl restart");
+			WriteToLog("disabled USB and Bluetooth");
 			usbOn = false;
 		    }
 		}
 		else if( !usbOn && wantUSB ) {
-		    /* Turn on USB and Ethernet */
+		    /* Turn on USB, wired Ethernet, and Bluetooth. */
 		    if( (fp = fopen("/sys/devices/platform/soc/3f980000.usb/buspower","w")) != NULL ) {
 			fprintf(fp,"1\n");
 			fclose(fp);
-			WriteToLog("enabled USB");
+			WriteToLog("enabled USB and Bluetooth");
 			usbOn = true;
 		    }
 		}
 
-		/* Turn Wi-Fi and Bluetooth on or off. */
-		if( radiosOn && !wantRad  ) {
-		    /* Turn off Wi-Fi and Bluetooth */
-		    system("/sbin/ifconfig wlan0 down");
-		    system("echo 'power off' | /usr/bin/bluetoothctl");
-		    WriteToLog("disabled wireless");
-		    radiosOn = false;
+		/* Turn Wi-Fi on or off. */
+		// TODO - make these two separate options
+		// TODO - make sure the wifi is actually turned off
+		//        iwconfig wlan0 txpower off
+		// To turn it back on, do this twice:
+		//        iwconfig wlan0 txpower auto
+		if( wifiOn && !wantWifi  ) {
+		    /* Turn off Wi-Fi. */
+		    system("/sbin/iwconfig wlan0 txpower off");
+		    WriteToLog("disabled wifi");
+		    wifiOn = false;
 		}
-		else if( !radiosOn && wantRad ) {
-		    /* Turn on Wi-Fi and Bluetooth */
-		    system("/sbin/ifconfig wlan0 up");
-		    system("echo 'power on' | /usr/bin/bluetoothctl");
-		    WriteToLog("enabled wireless");
-		    radiosOn = true;
+		else if( !wifiOn && wantWifi ) {
+		    /* Turn on Wi-Fi. */
+		    system("/sbin/iwconfig wlan0 txpower auto");
+		    /* Yes, we have to do this twice. Do we need a delay? */
+		    system("/sbin/iwconfig wlan0 txpower auto");
+		    WriteToLog("enabled wifi");
+		    wifiOn = true;
 		}
 	    }
 	}
@@ -349,7 +357,7 @@ int main( int argc, char **argv )
 	   cycles have been completed. */
 	double r = GetBatteryRaw();
 	double v = round(BatteryRawToVoltage(r) * 100.0) / 100.0;
-	double e = round(BatteryRawToEnergyRemaining(r));
+	double e = round(BatteryRawToEnergyRemaining(r,pluggedIn));
 
 	/* Don't do anything that relies on battery readings until the battery
 	   monitor has collected enough samples for an accurate reading. */

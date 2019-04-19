@@ -116,4 +116,5 @@ void DarkenDisplay( void )
 void RestoreDisplay( void )
 {
     targetLevel = rememberLevel;
+    // TODO - when restoring to a level 0 display, nudge it up to level 1.
 }

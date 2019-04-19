@@ -21,6 +21,6 @@
 #define __PI_TAB_DAEMON_BATTERY_H__
 
 extern double BatteryRawToVoltage( double raw );
-extern double BatteryRawToEnergyRemaining( double raw );
+extern double BatteryRawToEnergyRemaining( double raw, bool charging );
 
 #endif
