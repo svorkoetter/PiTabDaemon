@@ -1,3 +1,5 @@
+# Power, Display, and UI Management Daemon for DIY Raspberry Pi Tablet
+
 PiTabDaemon is a background process for monitoring and controlling the state of
 a Raspberry Pi based tablet, as described here (http://www.stefanv.com/electronics/a-compact-home-made-raspberry-pi-tablet.html). It performs
 the following functions, once per millisecond unless otherwise noted:
