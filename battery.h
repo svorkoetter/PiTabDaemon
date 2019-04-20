@@ -20,7 +20,22 @@
 #ifndef __PI_TAB_DAEMON_BATTERY_H__
 #define __PI_TAB_DAEMON_BATTERY_H__
 
-extern double BatteryRawToVoltage( double raw );
-extern double BatteryRawToEnergyRemaining( double raw, bool charging );
+/* Number of binary samples used to compute battery reading. */
+#define BATTERY_SAMPLES 16384
+
+extern void InitBattery( void );
+
+/* Sample the battery monitoring input, update a circular buffer of samples,
+   and return the average of all the samples (each of which is 0 or 1) in the
+   buffer. Also return a separate sample adjusted for the charger having been
+   connected when the samples were taken. */
+extern double GetRawBatteryReadings( bool charging, double *rAdj );
+
+/* Convert a raw battery reading to a voltage. */
+extern double BatteryRawToVoltage( double rAct );
+
+/* Convert an adjusted raw battery reading to an estimate of the energy
+   remaining in the battery. */
+extern double BatteryRawToEnergyRemaining( double rAdj );
 
 #endif

@@ -21,6 +21,7 @@
 #include <bcm2835.h>
 #include <math.h>
 
+#include "battery.h"
 #include "io.h"
 
 /* Debounced Inputs
@@ -63,23 +64,9 @@ struct ScanMap {
 
 static struct ScanMap scanMap[NUM_INPUTS];
 
-/* Battery Monitoring
-
-   The battery monitoring input is a single pin, driven by a comparator that
-   compares 0.69 times the battery voltage against a triangle wave that
-   oscillates between about 1.9 and 3.3V at about 100Hz. The fraction of the
-   time that the scaled voltage is higher than the waveform indicates where the
-   battery voltage lies in a range of about 2.7 to 4.8V. By keeping a running
-   average of the last BATTERY_SAMPLES samples (which are all 0 or 1), we get a
-   reasonable estimate of that fraction. */
+/* Battery Monitoring Input */
 
 #define GPIO_BATT_MON RPI_BPLUS_GPIO_J8_38
-#define VOLTAGE_AT_0 2.7096
-#define VOLTAGE_AT_1 4.8267
-
-static uint8_t batterySamples[BATTERY_SAMPLES];
-static unsigned int nextSampleIndex, sampleTotal;
-static double lastBattery;
 
 /* ----------------------------- Initialization ----------------------------- */
 
@@ -103,13 +90,8 @@ bool InitGPIO( void )
 	scanMap[i].debounced = false;
     }
 
-    /* Initialize battery monitoring to 50%. */
+    /* Initialize battery monitoring port. */
     initPort(GPIO_BATT_MON);
-    for( int i = 0; i < BATTERY_SAMPLES; ++i )
-        batterySamples[i] = i & 1;
-    nextSampleIndex = 0;
-    sampleTotal = BATTERY_SAMPLES / 2;
-    lastBattery = (VOLTAGE_AT_0 + VOLTAGE_AT_1) / 2;
 
     return( true );
 }
@@ -156,21 +138,7 @@ int GetInput( int inputNum )
 
 /* --------------------------- Battery Monitoring --------------------------- */
 
-/* Sample the battery monitoring input, update a circular buffer of samples,
-   and return the average of all the samples in the buffer. */
-
-double GetBatteryRaw( void )
+bool GetBatterySample( void )
 {
-    /* Remove the sample we're about to throw away from the total. */
-    sampleTotal -= batterySamples[nextSampleIndex];
-
-    /* Sample the battery monitor input and add it to the total. */
-    sampleTotal += batterySamples[nextSampleIndex]
-		 = bcm2835_gpio_lev(GPIO_BATT_MON);
-
-    /* Compute the index of the next sample. */
-    nextSampleIndex = (nextSampleIndex + 1) % BATTERY_SAMPLES;
-
-    /* Return the average of all the samples. */
-    return( (double) sampleTotal / BATTERY_SAMPLES );
+    return( bcm2835_gpio_lev(GPIO_BATT_MON) != 0 );
 }

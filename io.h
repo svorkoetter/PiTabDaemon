@@ -32,9 +32,6 @@
 extern bool InitGPIO( void );
 extern int GetInput( int inputNum );
 
-/* Number of binary samples used to compute battery reading. */
-#define BATTERY_SAMPLES 16384
-
-extern double GetBatteryRaw( void );
+extern bool GetBatterySample( void );
 
 #endif

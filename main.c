@@ -111,11 +111,12 @@ int main( int argc, char **argv )
     if( optKillOnly )
         return( 0 );
 
-    /* Initialize GPIO ports. */
+    /* Initialize GPIO ports and battery monitoring. */
     if( !InitGPIO() ) {
 	fprintf(stderr,"pitabd: failed to initialize GPIO\n");
 	return( 1 );
     }
+    InitBattery();
 
     /* Do what it takes to become a daemon. */
     if( optDaemonize && daemon(0,0) != 0 ) {
@@ -355,9 +356,9 @@ int main( int argc, char **argv )
 
 	/* Read battery state. This will be inaccurate until BATTERY_SAMPLES
 	   cycles have been completed. */
-	double r = GetBatteryRaw();
-	double v = round(BatteryRawToVoltage(r) * 100.0) / 100.0;
-	double e = round(BatteryRawToEnergyRemaining(r,pluggedIn));
+	double rAdj, rAct = GetRawBatteryReadings(charging,&rAdj);
+	double v = round(BatteryRawToVoltage(rAct) * 100.0) / 100.0;
+	double e = round(BatteryRawToEnergyRemaining(rAdj));
 
 	/* Don't do anything that relies on battery readings until the battery
 	   monitor has collected enough samples for an accurate reading. */
@@ -388,7 +389,7 @@ int main( int argc, char **argv )
 
 	    /* Log the raw battery reading once per minute when stable. */
 	    if( optLogBattery && cycle % 60000 == BATTERY_SAMPLES )
-	        WriteToLogArgF("raw battery %1.3f",r);
+	        WriteToLogArgF("raw battery %1.3f",rAct);
 	}
 
 	/* After two minutes of inactivity while running on batteries, dim the
