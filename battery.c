@@ -31,15 +31,23 @@ double BatteryRawToVoltage( double raw )
 
 // TODO - adjust for display brightness and system load (or maybe in io.c)
 
+// TODO - account for how long the charger has been connected, since the
+// response time of the fuel gauge is very slow (~16s), and connecting the
+// charger now cuases the displayed energy level to drop suddenly, and then
+// climb back to the correct value.
+
 double BatteryRawToEnergyRemaining( double raw, bool charger )
 {
-    //const double EMPTY = 0.34, KNEE = 0.44, KNEE_ENERGY = 0.22, FULL = 0.61;
     const double EMPTY = 0.34, EMPTY_ENERGY = 0.00;
     const double KNEE1 = 0.44, KNEE1_ENERGY = 0.22;
     const double KNEE2 = 0.61, KNEE2_ENERGY = 0.95;
     const double FULL = 0.707, FULL_ENERGY =  1.00;
-    if( charger )
-        raw -= 0.0945;
+    if( charger ) {
+	if( raw > KNEE2 )
+	    raw -= (FULL - raw) / (FULL - KNEE2) * 0.0945;
+	else
+	    raw -= 0.0945;
+    }
     double e = 0;
     if( raw > KNEE2 )
 	e = (raw - KNEE2) / (FULL - KNEE2) * (FULL_ENERGY - KNEE2_ENERGY) + KNEE2_ENERGY;
