@@ -18,25 +18,44 @@
    along with PiTabDaemon. If not, see <http://www.gnu.org/licenses/>. */
 
 #include <stdio.h>
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/scrnsaver.h>
-
-/* Based on code found at https://superuser.com/questions/638357 */
 
 /* Return user idle time in milliseconds. */
 int IdleTime( void )
 {
+    /* Check X11 idle time. Based on code found at
+       https://superuser.com/questions/638357 */
     static Display *display = NULL;
-    int event_base, error_base;
+    int event_base, error_base, idle;
     XScreenSaverInfo info;
 
     if( display == NULL && (display = XOpenDisplay(":0.0")) == NULL )
         return( -1 );
 
-    if( XScreenSaverQueryExtension(display,&event_base,&error_base) ) {
-	XScreenSaverQueryInfo(display,DefaultRootWindow(display),&info);
-	return( info.idle );
+    if( !XScreenSaverQueryExtension(display,&event_base,&error_base) )
+	return( -2 );
+
+    XScreenSaverQueryInfo(display,DefaultRootWindow(display),&info);
+    idle = info.idle;
+
+    /* Check console idle time. */
+    time_t now = time(NULL);
+    char tty[10];
+    struct stat st;
+
+    for( int i = 1; i <= 6 && idle > 0; ++i ) {
+	sprintf(tty,"/dev/tty%1.1d",i);
+	if( stat(tty,&st) == 0 ) {
+	    int ms = (now - st.st_mtime) * 1000;
+	    if( ms < idle )
+		idle = ms;
+	}
     }
 
-    return( -2 );
+    return( idle );
 }
